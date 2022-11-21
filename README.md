@@ -33,6 +33,8 @@ B) `Squid Proxy`: `client` --> `squid` (via `PROXY CONNECT`) --> `GCP`
 
 The following will demonstrate configurations using curl, envoy and squid
 
+![images/arch.png](images/arch.png)
+
 ### curl
 
 First just verify the basics using curl.

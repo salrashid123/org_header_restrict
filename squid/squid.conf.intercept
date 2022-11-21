@@ -1,0 +1,68 @@
+
+always_direct allow all
+
+acl localhost src 127.0.0.1/32
+acl to_localhost dst 127.0.0.0/8
+acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
+acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
+acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
+acl SSL_ports port 443
+acl Safe_ports port 80		# http
+acl Safe_ports port 21		# ftp
+acl Safe_ports port 443		# https
+acl Safe_ports port 70		# gopher
+acl Safe_ports port 210		# wais
+acl Safe_ports port 1025-65535	# unregistered ports
+acl Safe_ports port 280		# http-mgmt
+acl Safe_ports port 488		# gss-http
+acl Safe_ports port 591		# filemaker
+acl Safe_ports port 777		# multiling http
+acl CONNECT method CONNECT
+
+http_access allow all
+http_access allow manager localhost
+http_access deny manager
+
+htcp_access allow localnet
+htcp_access deny all
+
+
+visible_hostname squid.yourdomain.com
+
+http_port 3128 ssl-bump generate-host-certificates=on cert=/apps/tls-ca.crt key=/apps/tls-ca.key
+
+always_direct allow all
+acl excluded_sites ssl::server_name .wellsfargo.com
+acl httpbin_site ssl::server_name httpbin.org
+acl pubsub_site ssl::server_name pubsub.googleapis.com
+ssl_bump splice excluded_sites
+ssl_bump bump all
+
+
+request_header_add foo "bar" httpbin_site
+
+request_header_add X-Goog-Allowed-Resources "ewogICJyZXNvdXJjZXMiOiBbCiAgICAib3JnYW5pemF0aW9ucy82NzMyMDg3ODYwOTgiCiAgXSwKICAib3B0aW9ucyI6ICJzdHJpY3QiCn0K" pubsub_site
+
+sslproxy_cert_error deny all
+sslcrtd_program /apps/squid/libexec/security_file_certgen -s /apps/squid/var/lib/ssl_db -M 4MB sslcrtd_children 8 startup=1 idle=1
+
+icap_enable          on
+icap_preview_enable  on
+icap_preview_size    128
+icap_send_client_ip  on
+
+adaptation_access url_check  allow all
+
+access_log /apps/squid/var/logs/access.log squid
+
+debug_options ALL,1
+
+refresh_pattern ^ftp:		1440	20%	10080
+refresh_pattern ^gopher:	1440	0%	1440
+refresh_pattern (cgi-bin|\?)	0	0%	0
+refresh_pattern .		0	20%	4320
+
+icp_port 3130
+
+
+coredump_dir /apps/squid/var/cache
